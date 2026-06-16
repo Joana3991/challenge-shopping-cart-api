@@ -12,7 +12,7 @@ class CartsController < ApplicationController
   end
 
   def create_cart
-    Cart.create!(total_price: 0).tap do |cart|
+    Cart.create!.tap do |cart|
       session[:cart_id] = cart.id
     end
   end
