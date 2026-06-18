@@ -1,5 +1,11 @@
 # Desafio técnico e-commerce
 
+## Solução
+
+### Decisões técnicas
+
+- `GET /cart` cria e retorna um carrinho vazio quando não existe um carrinho ativo na sessão.
+
 ## Nossas expectativas
 
 A equipe de engenharia da RD Station tem alguns princípios nos quais baseamos nosso trabalho diário. Um deles é: projete seu código para ser mais fácil de entender, não mais fácil de escrever.
