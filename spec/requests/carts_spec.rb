@@ -34,7 +34,7 @@ RSpec.describe "/carts", type: :request do
       expect(cart_item.quantity).to eq(2)
     end
 
-    it "returns the cart products" do
+    it "returns the cart with products" do
       subject
       cart = Cart.last
       expect(response.parsed_body).to eq(
@@ -57,7 +57,7 @@ RSpec.describe "/carts", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
-    context 'when cart does not exist' do
+    context 'when cart does not exist in the session' do
       it "creates a new cart" do
         expect { subject }.to change(Cart, :count).by(1)
       end
@@ -90,6 +90,60 @@ RSpec.describe "/carts", type: :request do
         cart = Cart.find(response.parsed_body["id"])
         subject
         expect(CartItem.last.cart).to eq(cart)
+      end
+    end
+  end
+
+  describe "GET /cart" do
+    subject { get '/cart', as: :json }
+
+    context "when cart does not exist in the session" do
+      it "creates new cart" do
+        expect { subject }.to change(Cart, :count).by(1)
+      end
+
+      it "returns empty cart" do
+        subject
+        expect(response.parsed_body).to match(
+          "id" => be_a(Integer),
+          "products" => [],
+          "total_price" => "0.0"
+        )
+      end
+    end
+
+    context "when cart exists in the session" do
+      let(:product_01) { create(:product, name: "shampoo", price: 10.0) }
+      let(:product_02) { create(:product, name: "soap", price: 3.2) }
+
+      before do
+        post '/cart', params: { product_id: product_01.id, quantity: 2 }, as: :json
+        post '/cart', params: { product_id: product_02.id, quantity: 1 }, as: :json
+      end
+
+      it "returns the cart with products" do
+        subject
+        cart = Cart.last
+        expect(response.parsed_body).to match(
+          "id" => cart.id,
+          "products" => [
+            {
+              "id" => be_a(Integer),
+              "name" => "shampoo",
+              "quantity" => 2,
+              "unit_price" => "10.0",
+              "total_price" => "20.0"
+            },
+            {
+              "id" => be_a(Integer),
+              "name" => "soap",
+              "quantity" => 1,
+              "unit_price" => "3.2",
+              "total_price" => "3.2"
+            }
+          ],
+          "total_price" => "23.2"
+        )
       end
     end
   end
