@@ -4,10 +4,17 @@ class CartsController < ApplicationController
 
   def create
     @cart.add_product_to_cart(**resolved_cart_item_params)
+
     render json: CartSerializer.new(@cart).as_json
   end
 
   def show
+    render json: CartSerializer.new(@cart).as_json
+  end
+
+  def add_item
+    @cart.add_or_update_item(**resolved_cart_item_params)
+
     render json: CartSerializer.new(@cart).as_json
   end
 
