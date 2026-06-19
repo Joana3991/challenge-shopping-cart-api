@@ -159,4 +159,47 @@ RSpec.describe "/carts", type: :request do
       end
     end
   end
+
+  # TODO add tests for response
+  describe "PATCH /cart/add_item" do
+    context "when product already in the cart" do
+      let(:product) { create(:product) }
+      subject do
+        patch "/cart/add_item", params: { product_id: product.id, quantity: 2 }, as: :json
+      end
+
+      before do 
+        post '/cart', params: { product_id: product.id, quantity: 2 }, as: :json
+      end
+
+      it "updates product quantity in cart" do 
+        cart = Cart.find(session[:cart_id])
+        cart_item = CartItem.find_by(cart:, product:)
+  
+        expect { subject }.to change { cart_item.reload.quantity }.by(2)
+      end
+    end
+
+    context "when product is not in the cart" do
+      let(:product_01) { create(:product) }
+      let(:product_02) { create(:product) }
+
+      subject do
+        patch "/cart/add_item", params: { product_id: product_01.id, quantity: 2 }, as: :json
+      end
+
+      before do 
+        post '/cart', params: { product_id: product_02.id, quantity: 2 }, as: :json
+      end
+
+      it "adds product to the cart" do
+        expect { subject }.to change(CartItem, :count).by(1)
+
+        cart_item = CartItem.last
+        expect(cart_item.product).to eq(product_01)
+        expect(cart_item.cart).to eq(Cart.find(session[:cart_id]))
+        expect(cart_item.quantity).to eq(2)
+      end
+    end
+  end
 end
