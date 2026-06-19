@@ -1,12 +1,20 @@
 class CartsController < ApplicationController
+  rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
   before_action :set_cart
 
   def create
-    add_product_to_cart
+    @cart.add_product_to_cart(**resolved_cart_item_params)
+
     render json: CartSerializer.new(@cart).as_json
   end
 
   def show
+    render json: CartSerializer.new(@cart).as_json
+  end
+
+  def add_item
+    @cart.add_or_update_item(**resolved_cart_item_params)
+
     render json: CartSerializer.new(@cart).as_json
   end
 
@@ -26,19 +34,18 @@ class CartsController < ApplicationController
     end
   end
 
-  # TODO move logic to Cart model
-  # TODO add error handling for RecordNotFound
-  def add_product_to_cart
-    product_id, quantity = cart_item_params.values_at(:product_id, :quantity)
-  
-    ActiveRecord::Base.transaction do
-      product = Product.find(product_id)
-      CartItem.create!(product:, cart: @cart, quantity:)
-      @cart.update_total_price(product, quantity)
-    end
+  def resolved_cart_item_params
+    { 
+      product: Product.find(cart_item_params[:product_id]),
+      quantity: cart_item_params[:quantity]
+    }
   end
 
   def cart_item_params
     params.permit(:product_id, :quantity)
+  end
+
+  def record_not_found(exception)
+    render json: { error: "#{exception.model} not found" }, status: :not_found
   end
 end
