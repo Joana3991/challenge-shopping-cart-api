@@ -87,4 +87,37 @@ RSpec.describe Cart, type: :model do
       end
     end
   end
+
+  describe '#remove_product!' do 
+    let(:product) { create(:product, price: 10) }
+    let(:cart) { create(:cart, total_price: 100) }
+    let!(:cart_item) { create(:cart_item, cart:, product:, quantity: 2) }
+
+    context 'when product is in the cart' do
+      it 'removes product from cart' do 
+        expect { cart.remove_product!(product.id) }
+          .to change { cart.cart_items.count }.by(-1)
+        expect(cart.products).not_to include(product)
+      end
+      
+      it 'updates total price' do 
+        expect { cart.remove_product!(product.id) }
+          .to change { cart.total_price }.by(-20)
+      end
+    end
+
+    context 'when product is not in the cart' do
+      let(:unrelated_product) { create(:product) }
+
+      it 'raises RecordNotFound and does not change cart state' do
+        initial_items_count = cart.cart_items.count
+
+        expect { cart.remove_product!(unrelated_product.id) }
+          .to raise_error(ActiveRecord::RecordNotFound)
+
+        expect(cart.total_price).to eq(100)
+        expect(cart.cart_items.count).to eq(initial_items_count)
+      end
+    end
+  end
 end
