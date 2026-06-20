@@ -55,7 +55,7 @@ RSpec.describe "/carts", type: :request do
     end
 
     context 'when cart already exists in the session' do
-      include_context 'cart exists in session'
+      include_context 'cart exists in session with product'
 
       it 'does not create a new cart' do
         expect { subject }.not_to change(Cart, :count)
@@ -103,7 +103,7 @@ RSpec.describe "/carts", type: :request do
     end
 
     context 'when cart exists in the session' do
-      include_context 'cart exists in session'
+      include_context 'cart exists in session with product'
 
       let(:product) { create(:product) }
       let(:product_02) { create(:product) }
@@ -119,16 +119,15 @@ RSpec.describe "/carts", type: :request do
 
   describe 'PATCH /cart/add_item' do
     let(:product) { create(:product) }
-    include_context 'cart exists in session'
+    include_context 'cart exists in session with product'
 
     context 'when product already in the cart' do
-      let(:expected_items) { { product => 5 } }
+      let(:expected_items) { { product => 5 } } # 2 from shared_context POST + 3 from this PATCH
       subject do
         patch '/cart/add_item', params: { product_id: product.id, quantity: 3 }, as: :json
       end
 
       it 'updates product quantity in cart' do 
-        cart = Cart.find(session[:cart_id])
         cart_item = CartItem.find_by(cart:, product:)
   
         expect { subject }.to change { cart_item.reload.quantity }.by(3)

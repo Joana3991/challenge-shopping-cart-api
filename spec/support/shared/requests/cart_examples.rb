@@ -1,5 +1,6 @@
 # Expects `product` to be defined within example context
-RSpec.shared_context 'cart exists in session' do
+# Creates cart with product quantity 2
+RSpec.shared_context 'cart exists in session with product' do
   let(:cart) { Cart.find(session[:cart_id]) }
   
   before do
@@ -17,7 +18,7 @@ RSpec.shared_examples 'returns cart with products' do
 
   it 'returns the cart JSON' do
     subject
-    cart = Cart.last
+    cart = Cart.find(session[:cart_id])
     products = expected_items.map do |product, quantity|
       {
         "id" => product.id,
