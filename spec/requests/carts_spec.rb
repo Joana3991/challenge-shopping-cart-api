@@ -19,13 +19,15 @@ RSpec.describe "/carts", type: :request do
   #   end
   # end
 
-  describe "POST /cart" do
+  describe 'POST /cart' do
     let(:product) { create(:product) }
+    let(:expected_items) { { product => 2 } }
+
     subject do
       post '/cart', params: { product_id: product.id, quantity: 2 }, as: :json
     end
 
-    it "adds the product to the cart" do
+    it 'adds the product to the cart' do
       expect { subject }.to change(CartItem, :count).by(1)
 
       cart_item = CartItem.last
@@ -34,87 +36,63 @@ RSpec.describe "/carts", type: :request do
       expect(cart_item.quantity).to eq(2)
     end
 
-    it "returns the cart with products" do
-      subject
-      cart = Cart.last
-      expect(response.parsed_body).to eq(
-        "id" => cart.id,
-        "products" => [
-          {
-            "id" => product.id,
-            "name" => product.name,
-            "quantity" => 2,
-            "unit_price" => product.price.to_s,
-            "total_price" => (product.price * 2).to_s
-          }
-        ],
-        "total_price" => (product.price * 2).to_s
-      )
-    end
+    include_examples 'returns cart with products'
 
-    it "returns status 200" do
-      subject
-      expect(response).to have_http_status(:ok)
-    end
-
-    context "when cart does not exist in the session" do
-      it "creates a new cart" do
+    context 'when cart does not exist in the session' do
+      it 'creates a new cart' do
         expect { subject }.to change(Cart, :count).by(1)
       end
 
-      it "saves the cart id in the session" do
+      it 'saves the cart id in the session' do
         subject
         expect(session[:cart_id]).to eq(Cart.last.id)
       end
 
-      it "updates cart total_price" do
+      it 'updates cart total_price' do
         subject
         expect(Cart.last.total_price).to eq(product.price * 2)
       end
     end
 
-    context "when cart already exists in the session" do
-      before do
-        post "/cart", params: { product_id: product.id, quantity: 2 }, as: :json
-      end
+    context 'when cart already exists in the session' do
+      include_context 'cart exists in session with product'
 
-      it "does not create a new cart" do
+      it 'does not create a new cart' do
         expect { subject }.not_to change(Cart, :count)
       end
 
-      it "updates cart total_price correctly" do
-        expect { subject }.to change { Cart.last.total_price }.by(product.price * 2)
+      it 'updates cart total_price correctly' do
+        expect { subject }.to change { cart.reload.total_price }.by(product.price * 2)
       end
 
-      it "adds product to existing cart" do
-        cart = Cart.find(response.parsed_body["id"])
+      it 'adds product to existing cart' do
         subject
         expect(CartItem.last.cart).to eq(cart)
       end
     end
 
-    context "when product is not found" do
-      it "returns not found status" do
+    context 'when product is not found' do
+      it 'returns not found status' do
         post '/cart', params: { product_id: 999999, quantity: 1 }
         expect(response).to have_http_status(:not_found)
       end
 
-      it "returns error message" do
+      it 'returns error message' do
         post '/cart', params: { product_id: 999999, quantity: 1 }
-        expect(response.parsed_body["error"]).to eq("Product not found")
+        expect(response.parsed_body['error']).to eq('Product not found')
       end
     end
   end
 
-  describe "GET /cart" do
+  describe 'GET /cart' do
     subject { get '/cart', as: :json }
 
-    context "when cart does not exist in the session" do
-      it "creates new cart" do
+    context 'when cart does not exist in the session' do
+      it 'creates new cart' do
         expect { subject }.to change(Cart, :count).by(1)
       end
 
-      it "returns empty cart" do
+      it 'returns empty cart' do
         subject
         expect(response.parsed_body).to match(
           "id" => be_a(Integer),
@@ -124,82 +102,58 @@ RSpec.describe "/carts", type: :request do
       end
     end
 
-    context "when cart exists in the session" do
-      let(:product_01) { create(:product, name: "shampoo", price: 10.0) }
-      let(:product_02) { create(:product, name: "soap", price: 3.2) }
+    context 'when cart exists in the session' do
+      include_context 'cart exists in session with product'
+
+      let(:product) { create(:product) }
+      let(:product_02) { create(:product) }
+      let(:expected_items) { { product => 2, product_02 => 1 } }
 
       before do
-        post '/cart', params: { product_id: product_01.id, quantity: 2 }, as: :json
         post '/cart', params: { product_id: product_02.id, quantity: 1 }, as: :json
       end
 
-      it "returns the cart with products" do
-        subject
-        cart = Cart.last
-        expect(response.parsed_body).to match(
-          "id" => cart.id,
-          "products" => [
-            {
-              "id" => be_a(Integer),
-              "name" => "shampoo",
-              "quantity" => 2,
-              "unit_price" => "10.0",
-              "total_price" => "20.0"
-            },
-            {
-              "id" => be_a(Integer),
-              "name" => "soap",
-              "quantity" => 1,
-              "unit_price" => "3.2",
-              "total_price" => "3.2"
-            }
-          ],
-          "total_price" => "23.2"
-        )
-      end
+      include_examples 'returns cart with products'
     end
   end
 
-  # TODO add tests for response
-  describe "PATCH /cart/add_item" do
-    context "when product already in the cart" do
-      let(:product) { create(:product) }
+  describe 'PATCH /cart/add_item' do
+    let(:product) { create(:product) }
+    include_context 'cart exists in session with product'
+
+    context 'when product already in the cart' do
+      let(:expected_items) { { product => 5 } } # 2 from shared_context POST + 3 from this PATCH
       subject do
-        patch "/cart/add_item", params: { product_id: product.id, quantity: 2 }, as: :json
+        patch '/cart/add_item', params: { product_id: product.id, quantity: 3 }, as: :json
       end
 
-      before do 
-        post '/cart', params: { product_id: product.id, quantity: 2 }, as: :json
-      end
-
-      it "updates product quantity in cart" do 
-        cart = Cart.find(session[:cart_id])
+      it 'updates product quantity in cart' do 
         cart_item = CartItem.find_by(cart:, product:)
   
-        expect { subject }.to change { cart_item.reload.quantity }.by(2)
+        expect { subject }.to change { cart_item.reload.quantity }.by(3)
       end
+
+      include_examples 'returns cart with products'
     end
 
-    context "when product is not in the cart" do
-      let(:product_01) { create(:product) }
+    context 'when product is not in the cart' do
       let(:product_02) { create(:product) }
+      let(:expected_items) { { product => 2, product_02 => 3 } }
 
       subject do
-        patch "/cart/add_item", params: { product_id: product_01.id, quantity: 2 }, as: :json
+        patch '/cart/add_item', params: { product_id: product_02.id, quantity: 3 }, as: :json
       end
 
-      before do 
-        post '/cart', params: { product_id: product_02.id, quantity: 2 }, as: :json
-      end
-
-      it "adds product to the cart" do
+      it 'adds product to the cart' do
         expect { subject }.to change(CartItem, :count).by(1)
 
         cart_item = CartItem.last
-        expect(cart_item.product).to eq(product_01)
-        expect(cart_item.cart).to eq(Cart.find(session[:cart_id]))
-        expect(cart_item.quantity).to eq(2)
+        expect(cart_item.product).to eq(product_02)
+        expect(cart_item.cart).to eq(cart)
+        expect(cart_item.quantity).to eq(3)
       end
+
+      include_examples 'returns cart with products'
     end
   end
 end
