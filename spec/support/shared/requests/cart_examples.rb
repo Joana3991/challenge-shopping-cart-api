@@ -11,12 +11,6 @@ end
 # Expects `expected_items` to be defined within example context
 # format: hash of { product => quantity }
 RSpec.shared_examples 'returns cart with products' do
-  # TODO avaliate the following
-  # it 'returns status 200' do
-  #   subject
-  #   expect(response).to have_http_status(:ok)
-  # end
-
   it 'returns the cart JSON' do
     subject
     cart = Cart.find(session[:cart_id])
@@ -38,13 +32,20 @@ RSpec.shared_examples 'returns cart with products' do
   end
 end
 
+RSpec.shared_examples 'returns status 200' do
+  it 'returns status ok' do
+    subject
+    expect(response).to have_http_status(:ok)
+  end
+end
+
 RSpec.shared_examples 'returns empty cart' do
-    it 'returns empty cart json' do
-      subject
-      expect(response.parsed_body).to match(
-        "id" => be_a(Integer),
-        "products" => [],
-        "total_price" => "0.0"
-      )
-    end
+  it 'returns empty cart json' do
+    subject
+    expect(response.parsed_body).to match(
+      "id" => be_a(Integer),
+      "products" => [],
+      "total_price" => "0.0"
+    )
+  end
 end
