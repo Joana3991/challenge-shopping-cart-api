@@ -5,6 +5,7 @@ class Cart < ApplicationRecord
   has_many :products, through: :cart_items
   # TODO: lógica para marcar o carrinho como abandonado e remover se abandonado
 
+  # TODO refactor logic to avoid extra query
   def add_or_update_item(product:, quantity:)
     if product_in_cart?(product)
       update_item_quantity(product:, quantity:)
@@ -27,6 +28,19 @@ class Cart < ApplicationRecord
       item.increment!(:quantity, quantity)
       update_total_price(product:, quantity:)
     end
+  end
+
+  def remove_product!(product_id)
+    item = cart_items.includes(:product).find_by!(product_id:)
+
+    ActiveRecord::Base.transaction do
+      update_total_price(
+        product: item.product,
+        quantity: -item.quantity
+      )
+      item.destroy
+    end
+
   end
 
   def product_in_cart?(product)

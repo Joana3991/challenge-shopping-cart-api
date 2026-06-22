@@ -5,6 +5,7 @@ Rails.application.routes.draw do
   resources :products
   resource :cart, only: [:create, :show] do
     patch "add_item", on: :collection
+    delete ":product_id", action: :destroy, on: :collection
   end
   get "up" => "rails/health#show", as: :rails_health_check
 

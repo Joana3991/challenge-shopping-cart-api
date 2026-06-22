@@ -69,10 +69,12 @@ RSpec.describe "/carts", type: :request do
         subject
         expect(CartItem.last.cart).to eq(cart)
       end
+
+    include_examples 'returns status 200'
     end
 
     context 'when product is not found' do
-      it 'returns not found status' do
+      it 'returns not_found status' do
         post '/cart', params: { product_id: 999999, quantity: 1 }
         expect(response).to have_http_status(:not_found)
       end
@@ -92,14 +94,7 @@ RSpec.describe "/carts", type: :request do
         expect { subject }.to change(Cart, :count).by(1)
       end
 
-      it 'returns empty cart' do
-        subject
-        expect(response.parsed_body).to match(
-          "id" => be_a(Integer),
-          "products" => [],
-          "total_price" => "0.0"
-        )
-      end
+      include_examples 'returns empty cart'
     end
 
     context 'when cart exists in the session' do
@@ -114,6 +109,7 @@ RSpec.describe "/carts", type: :request do
       end
 
       include_examples 'returns cart with products'
+      include_examples 'returns status 200'
     end
   end
 
@@ -134,6 +130,7 @@ RSpec.describe "/carts", type: :request do
       end
 
       include_examples 'returns cart with products'
+      include_examples 'returns status 200'
     end
 
     context 'when product is not in the cart' do
@@ -154,6 +151,60 @@ RSpec.describe "/carts", type: :request do
       end
 
       include_examples 'returns cart with products'
+      include_examples 'returns status 200'
     end
   end
+
+  describe 'DELETE /cart/:product_id' do
+    let(:product) { create(:product) }
+    include_context 'cart exists in session with product'
+    
+    context 'when product is in the cart' do
+      subject do
+        delete "/cart/#{product.id}", as: :json
+      end
+
+      it 'removes product from cart' do
+        expect { subject }.to change{cart.reload.cart_items.count }.by(-1)
+      end
+
+      it 'updates cart total_price correctly' do
+        expect { subject }.to change { cart.reload.total_price }.by(product.price * -2)
+      end
+
+      context 'when product was the last item in cart' do
+        include_examples 'returns empty cart'
+        include_examples 'returns status 200'
+      end
+
+      context 'when there were other products in cart' do
+        let(:other_product) { create(:product) }
+        let(:expected_items) {{ other_product => 1 }}
+        before do 
+          create(:cart_item, cart:, product: other_product, quantity: 1) 
+        end
+        include_examples 'returns cart with products'
+        include_examples 'returns status 200'
+      end
+    end
+
+    context 'when product is not in the cart' do
+      let(:other_product) { create(:product) }
+
+      subject do
+        delete "/cart/#{other_product.id}", as: :json
+      end
+
+      it 'returns error message' do
+        subject
+        expect(response).to have_http_status(:not_found)
+        expect(response.parsed_body['error']).to eq('CartItem not found')
+      end
+
+      it 'does not change cart total_price' do
+        expect { subject }.not_to change { cart.reload.total_price }
+      end
+    end
+  end
+
 end
