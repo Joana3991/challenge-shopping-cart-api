@@ -21,24 +21,15 @@ RSpec.describe "/carts", type: :request do
 
   describe 'POST /cart' do
     let(:product) { create(:product) }
-    let(:expected_items) { { product => 2 } }
-
-    subject do
-      post '/cart', params: { product_id: product.id, quantity: 2 }, as: :json
-    end
-
-    it 'adds the product to the cart' do
-      expect { subject }.to change(CartItem, :count).by(1)
-
-      cart_item = CartItem.last
-      expect(cart_item.product).to eq(product)
-      expect(cart_item.cart).to eq(Cart.last)
-      expect(cart_item.quantity).to eq(2)
-    end
-
-    include_examples 'returns cart with products'
 
     context 'when cart does not exist in the session' do
+      let(:cart) { Cart.find(session[:cart_id]) }
+      let(:expected_cart_items) { { product => 2 } }
+
+      subject do
+        post '/cart', params: { product_id: product.id, quantity: 2 }, as: :json
+      end
+
       it 'creates a new cart' do
         expect { subject }.to change(Cart, :count).by(1)
       end
@@ -50,27 +41,29 @@ RSpec.describe "/carts", type: :request do
 
       it 'updates cart total_price' do
         subject
-        expect(Cart.last.total_price).to eq(product.price * 2)
+        expect(cart.total_price).to eq(product.price * 2)
       end
+
+      include_examples 'adds new product to cart', 2
+      include_examples 'returns cart with products'
     end
 
     context 'when cart already exists in the session' do
+      let(:existing_product) { create(:product) }
+      let(:expected_cart_items) { { existing_product => 2, product => 1 } }
       include_context 'cart exists in session with product'
+
+      subject do
+        post '/cart', params: { product_id: product.id, quantity: 1 }, as: :json
+      end
 
       it 'does not create a new cart' do
         expect { subject }.not_to change(Cart, :count)
       end
 
-      it 'updates cart total_price correctly' do
-        expect { subject }.to change { cart.reload.total_price }.by(product.price * 2)
-      end
-
-      it 'adds product to existing cart' do
-        subject
-        expect(CartItem.last.cart).to eq(cart)
-      end
-
-    include_examples 'returns status 200'
+      include_examples 'adds new product to cart', 1
+      include_examples 'updates cart total_price', 1
+      include_examples 'returns status 200'
     end
 
     context 'when product is not found' do
@@ -98,15 +91,9 @@ RSpec.describe "/carts", type: :request do
     end
 
     context 'when cart exists in the session' do
+      let(:existing_product) { create(:product) }
+      let(:expected_cart_items) { { existing_product => 2 } }
       include_context 'cart exists in session with product'
-
-      let(:product) { create(:product) }
-      let(:product_02) { create(:product) }
-      let(:expected_items) { { product => 2, product_02 => 1 } }
-
-      before do
-        post '/cart', params: { product_id: product_02.id, quantity: 1 }, as: :json
-      end
 
       include_examples 'returns cart with products'
       include_examples 'returns status 200'
@@ -114,14 +101,16 @@ RSpec.describe "/carts", type: :request do
   end
 
   describe 'PATCH /cart/add_item' do
-    let(:product) { create(:product) }
+    let(:existing_product) { create(:product) }
     include_context 'cart exists in session with product'
-
+    subject do
+      patch '/cart/add_item', params: { product_id: product.id, quantity: 3 }, as: :json
+    end
+    
     context 'when product already in the cart' do
-      let(:expected_items) { { product => 5 } } # 2 from shared_context POST + 3 from this PATCH
-      subject do
-        patch '/cart/add_item', params: { product_id: product.id, quantity: 3 }, as: :json
-      end
+      let(:product) { existing_product }
+      let(:expected_cart_items) { { product => 5 } }
+
 
       it 'updates product quantity in cart' do 
         cart_item = CartItem.find_by(cart:, product:)
@@ -129,60 +118,55 @@ RSpec.describe "/carts", type: :request do
         expect { subject }.to change { cart_item.reload.quantity }.by(3)
       end
 
+      include_examples 'updates cart total_price', 3
       include_examples 'returns cart with products'
       include_examples 'returns status 200'
     end
 
     context 'when product is not in the cart' do
-      let(:product_02) { create(:product) }
-      let(:expected_items) { { product => 2, product_02 => 3 } }
+      let(:product) { create(:product) }
+      let(:expected_cart_items) { { existing_product => 2, product => 3 } }
 
-      subject do
-        patch '/cart/add_item', params: { product_id: product_02.id, quantity: 3 }, as: :json
-      end
-
-      it 'adds product to the cart' do
-        expect { subject }.to change(CartItem, :count).by(1)
-
-        cart_item = CartItem.last
-        expect(cart_item.product).to eq(product_02)
-        expect(cart_item.cart).to eq(cart)
-        expect(cart_item.quantity).to eq(3)
-      end
-
+      include_examples 'adds new product to cart', 3
+      include_examples 'updates cart total_price', 3
       include_examples 'returns cart with products'
       include_examples 'returns status 200'
     end
   end
 
   describe 'DELETE /cart/:product_id' do
-    let(:product) { create(:product) }
+    let(:existing_product) { create(:product) }
     include_context 'cart exists in session with product'
     
     context 'when product is in the cart' do
+      let(:product) { existing_product }
       subject do
         delete "/cart/#{product.id}", as: :json
       end
 
-      it 'removes product from cart' do
+      it 'removes the product from cart' do
         expect { subject }.to change{cart.reload.cart_items.count }.by(-1)
-      end
-
-      it 'updates cart total_price correctly' do
-        expect { subject }.to change { cart.reload.total_price }.by(product.price * -2)
+        expect(CartItem.find_by(cart:, product:)).to be_nil
       end
 
       context 'when product was the last item in cart' do
+        it 'updates total_price' do
+          subject
+          expect(cart.total_price).to eq(0)
+        end
+
         include_examples 'returns empty cart'
         include_examples 'returns status 200'
       end
 
       context 'when there were other products in cart' do
         let(:other_product) { create(:product) }
-        let(:expected_items) {{ other_product => 1 }}
+        let(:expected_cart_items) {{ other_product => 1 }}
         before do 
           create(:cart_item, cart:, product: other_product, quantity: 1) 
         end
+
+        include_examples 'updates cart total_price', -2
         include_examples 'returns cart with products'
         include_examples 'returns status 200'
       end
