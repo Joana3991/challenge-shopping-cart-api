@@ -18,6 +18,12 @@ class CartsController < ApplicationController
     render json: CartSerializer.new(@cart).as_json
   end
 
+  def destroy
+    @cart.remove_product!(params[:product_id])
+
+    render json: CartSerializer.new(@cart).as_json
+  end
+
   private
 
   def set_cart
