@@ -21,15 +21,15 @@ RSpec.describe "/carts", type: :request do
 
   describe 'POST /cart' do
     let(:product) { create(:product) }
+    let(:expected_cart_items) { { product => 2 } }
+
+    subject do
+      post '/cart', params: { product_id: product.id, quantity: 2 }, as: :json
+    end
 
     context 'when cart does not exist in the session' do
       let(:cart) { Cart.find(session[:cart_id]) }
-      let(:expected_cart_items) { { product => 2 } }
-
-      subject do
-        post '/cart', params: { product_id: product.id, quantity: 2 }, as: :json
-      end
-
+ 
       it 'creates a new cart' do
         expect { subject }.to change(Cart, :count).by(1)
       end
@@ -49,20 +49,14 @@ RSpec.describe "/carts", type: :request do
     end
 
     context 'when cart already exists in the session' do
-      let(:existing_product) { create(:product) }
-      let(:expected_cart_items) { { existing_product => 2, product => 1 } }
-      include_context 'cart exists in session with product'
-
-      subject do
-        post '/cart', params: { product_id: product.id, quantity: 1 }, as: :json
-      end
+      include_context 'cart exists in session empty'
 
       it 'does not create a new cart' do
         expect { subject }.not_to change(Cart, :count)
       end
 
-      include_examples 'adds new product to cart', 1
-      include_examples 'updates cart total_price', 1
+      include_examples 'adds new product to cart', 2
+      include_examples 'updates cart total_price', 2
       include_examples 'returns status 200'
     end
 
@@ -91,8 +85,8 @@ RSpec.describe "/carts", type: :request do
     end
 
     context 'when cart exists in the session' do
-      let(:existing_product) { create(:product) }
-      let(:expected_cart_items) { { existing_product => 2 } }
+      let(:product) { create(:product) }
+      let(:expected_cart_items) { { product => 2 } }
       include_context 'cart exists in session with product'
 
       include_examples 'returns cart with products'
@@ -101,16 +95,15 @@ RSpec.describe "/carts", type: :request do
   end
 
   describe 'PATCH /cart/add_item' do
-    let(:existing_product) { create(:product) }
-    include_context 'cart exists in session with product'
+    let(:product) { create(:product) }
+
     subject do
       patch '/cart/add_item', params: { product_id: product.id, quantity: 3 }, as: :json
     end
     
     context 'when product already in the cart' do
-      let(:product) { existing_product }
       let(:expected_cart_items) { { product => 5 } }
-
+      include_context 'cart exists in session with product'
 
       it 'updates product quantity in cart' do 
         cart_item = CartItem.find_by(cart:, product:)
@@ -118,14 +111,15 @@ RSpec.describe "/carts", type: :request do
         expect { subject }.to change { cart_item.reload.quantity }.by(3)
       end
 
+      # TODO add test to ensure cart_item is not being created
       include_examples 'updates cart total_price', 3
       include_examples 'returns cart with products'
       include_examples 'returns status 200'
     end
 
     context 'when product is not in the cart' do
-      let(:product) { create(:product) }
-      let(:expected_cart_items) { { existing_product => 2, product => 3 } }
+      let(:expected_cart_items) { { product => 3 } }
+      include_context 'cart exists in session empty'
 
       include_examples 'adds new product to cart', 3
       include_examples 'updates cart total_price', 3
@@ -135,14 +129,13 @@ RSpec.describe "/carts", type: :request do
   end
 
   describe 'DELETE /cart/:product_id' do
-    let(:existing_product) { create(:product) }
-    include_context 'cart exists in session with product'
+    let(:product) { create(:product) }
+    subject do
+      delete "/cart/#{product.id}", as: :json
+    end
     
     context 'when product is in the cart' do
-      let(:product) { existing_product }
-      subject do
-        delete "/cart/#{product.id}", as: :json
-      end
+      include_context 'cart exists in session with product'
 
       it 'removes the product from cart' do
         expect { subject }.to change{cart.reload.cart_items.count }.by(-1)
@@ -173,11 +166,7 @@ RSpec.describe "/carts", type: :request do
     end
 
     context 'when product is not in the cart' do
-      let(:other_product) { create(:product) }
-
-      subject do
-        delete "/cart/#{other_product.id}", as: :json
-      end
+      include_context 'cart exists in session empty'
 
       it 'returns error message' do
         subject

@@ -1,12 +1,3 @@
-# Expects `existing_product` to be defined within example context
-shared_context 'cart exists in session with product' do
-  let(:cart) { Cart.find(session[:cart_id]) }
-  before do
-    post '/cart', params: { product_id: existing_product.id, quantity: 2 }, as: :json
-  end
-end
-
-
 # Expects `expected_cart_items` to be defined within example context
 # format: hash of { product => quantity }
 shared_examples 'returns cart with products' do
