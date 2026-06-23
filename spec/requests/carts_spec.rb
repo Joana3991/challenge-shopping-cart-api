@@ -126,6 +126,10 @@ RSpec.describe "/carts", type: :request do
       include_examples 'returns cart with products'
       include_examples 'returns status 200'
     end
+
+    context 'when cart can not be found' do
+      include_examples 'cart not found'
+    end
   end
 
   describe 'DELETE /cart/:product_id' do
@@ -178,6 +182,9 @@ RSpec.describe "/carts", type: :request do
         expect { subject }.not_to change { cart.reload.total_price }
       end
     end
-  end
 
+    context 'when cart can not be found' do
+      include_examples 'cart not found'
+    end
+  end
 end

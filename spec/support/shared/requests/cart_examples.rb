@@ -55,3 +55,34 @@ shared_examples 'updates cart total_price' do |quantity_delta|
     expect { subject }.to change { cart.reload.total_price }.by(product.price * quantity_delta)
   end
 end
+
+shared_examples 'cart not found' do
+  context 'when session[:cart_id] is present but cart is not' do
+    before do 
+      get '/cart', as: :json
+      Cart.destroy_all
+      subject
+    end
+
+    it 'returns not_found status' do
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'returns error message' do
+      expect(response.parsed_body['error']).to eq('Cart not found')
+    end
+  end
+
+
+  context 'when session[:cart_id] is not present' do
+    before { subject }
+
+    it 'returns not_found status' do
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'returns error message' do
+      expect(response.parsed_body['error']).to eq('Cart not found')
+    end
+  end
+end
