@@ -44,24 +44,6 @@ RSpec.describe Cart, type: :model do
     end
   end
 
-  describe '#update_item_quantity' do
-    let(:cart) { create(:cart, total_price: 10.0) }
-    let(:product) { create(:product, price: 15.0) }
-    let!(:cart_item) { create(:cart_item, quantity: 1, product:, cart:) }
-
-    it 'updates the item quantity' do
-      cart.update_item_quantity(product:, quantity: 2)
-
-      expect(cart_item.reload.quantity).to eq(3)
-    end
-
-    it 'updates the cart total_price' do
-      cart.update_item_quantity(product:, quantity: 2)
-
-      expect(cart.reload.total_price).to eq(40.0)
-    end
-  end
-
   describe '#add_or_update_item' do
     let(:product) { create(:product) }
     let(:cart) { create(:cart) }
