@@ -31,15 +31,15 @@ RSpec.describe Cart, type: :model do
     let!(:cart) { create(:cart, total_price: 10.0) }
     let(:product) { create(:product, price: 15.0) }
 
+    subject { cart.add_product_to_cart(product:, quantity: 2) }
+
     it 'adds product to cart' do 
-      expect { cart.add_product_to_cart(product:, quantity: 1) }
-        .to change { cart.cart_items.count }.by(1)
+      expect { subject }.to change { cart.cart_items.count }.by(1)
       expect(CartItem.last.product).to eq(product)  
     end
 
     it 'updates the cart total_price' do
-      cart.add_product_to_cart(product:, quantity: 2)
-
+      subject
       expect(cart.reload.total_price).to eq(40.0)
     end
   end
@@ -48,10 +48,11 @@ RSpec.describe Cart, type: :model do
     let(:product) { create(:product) }
     let(:cart) { create(:cart) }
 
+    subject { cart.add_or_update_item(product:, quantity: 2) }
+
     context 'when product is not in the cart' do
       it 'adds the product to the cart' do
-        expect { cart.add_or_update_item(product:, quantity: 2) }
-          .to change { cart.cart_items.count }.by(1)
+        expect { subject }.to change { cart.cart_items.count }.by(1)
       end
     end
 
@@ -59,13 +60,12 @@ RSpec.describe Cart, type: :model do
       let!(:cart_item) { create(:cart_item, cart:, product:, quantity: 1) }
 
       it 'updates the item quantity' do
-        cart.add_or_update_item(product:, quantity: 2)
+        subject
         expect(cart_item.reload.quantity).to eq(3)
       end
 
       it 'does not create new cart_item' do
-        expect { cart.add_or_update_item(product:, quantity: 2) }
-          .not_to change { cart.cart_items.count }
+        expect { subject }.not_to change { cart.cart_items.count }
       end
     end
   end
@@ -75,16 +75,16 @@ RSpec.describe Cart, type: :model do
     let(:cart) { create(:cart, total_price: 100) }
     let!(:cart_item) { create(:cart_item, cart:, product:, quantity: 2) }
 
+    subject { cart.remove_product!(product.id) }
+
     context 'when product is in the cart' do
       it 'removes product from cart' do 
-        expect { cart.remove_product!(product.id) }
-          .to change { cart.cart_items.count }.by(-1)
+        expect { subject }.to change { cart.cart_items.count }.by(-1)
         expect(cart.products).not_to include(product)
       end
       
       it 'updates total price' do 
-        expect { cart.remove_product!(product.id) }
-          .to change { cart.total_price }.by(-20)
+        expect { subject }.to change { cart.total_price }.by(-20)
       end
     end
 
