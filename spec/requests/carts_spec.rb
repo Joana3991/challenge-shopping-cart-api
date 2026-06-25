@@ -94,11 +94,11 @@ RSpec.describe "/carts", type: :request do
     end
   end
 
-  describe 'PATCH /cart/add_item' do
+  describe 'POST /cart/add_item' do
     let(:product) { create(:product) }
 
     subject do
-      patch '/cart/add_item', params: { product_id: product.id, quantity: 3 }, as: :json
+      post '/cart/add_item', params: { product_id: product.id, quantity: 3 }, as: :json
     end
     
     context 'when product already in the cart' do
