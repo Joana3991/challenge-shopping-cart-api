@@ -1,6 +1,7 @@
 class CartsController < ApplicationController
   rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
-  before_action :set_cart
+  before_action :set_or_create_cart, only: %i[show create]
+  before_action :set_cart, only: %i[add_item destroy]
 
   def create
     @cart.add_product_to_cart(**resolved_cart_item_params)
@@ -27,11 +28,11 @@ class CartsController < ApplicationController
   private
 
   def set_cart
-    @cart = find_or_create_cart
+    @cart = Cart.find(session[:cart_id])
   end
 
-  def find_or_create_cart
-    Cart.find_by(id: session[:cart_id]) || create_cart
+  def set_or_create_cart
+    @cart = Cart.find_by(id: session[:cart_id]) || create_cart
   end
 
   def create_cart

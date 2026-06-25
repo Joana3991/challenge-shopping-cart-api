@@ -5,6 +5,7 @@
 ### Decisões técnicas
 
 - `GET /cart` cria e retorna um carrinho vazio quando não existe um carrinho ativo na sessão.
+- `PATCH /cart/add_item` e `DELETE /cart/:product_id` retornam erro (`404 Not Found`, mensagem `"Cart not found"`) quando não é encontrado um carrinho ativo na sessão.
 
 ## Nossas expectativas
 
