@@ -15,7 +15,7 @@ class Cart < ApplicationRecord
   def add_product_to_cart(product:, quantity:)
     ActiveRecord::Base.transaction do
       cart_items.create!(product:, quantity:)
-      update_total_price(product:, qty_delta: quantity)
+      update_cart_state(product:, qty_delta: quantity)
     end
   end
 
@@ -24,7 +24,7 @@ class Cart < ApplicationRecord
     item = cart_items.includes(:product).find_by!(product_id:)
 
     ActiveRecord::Base.transaction do
-      update_total_price(
+      update_cart_state(
         product: item.product,
         qty_delta: -item.quantity
       )
@@ -37,11 +37,14 @@ class Cart < ApplicationRecord
   def update_item_quantity(product:, qty_delta:, item:)
     ActiveRecord::Base.transaction do
       item.increment!(:quantity, qty_delta)
-      update_total_price(product:, qty_delta:)
+      update_cart_state(product:, qty_delta:)
     end
   end
 
-  def update_total_price(product:, qty_delta:)
-    update!(total_price: total_price + product.price * qty_delta)
+  def update_cart_state(product:, qty_delta:)
+    update!(
+      total_price: total_price + product.price * qty_delta,
+      last_interaction_at: Time.current,
+      abandoned_at: nil)
   end
 end

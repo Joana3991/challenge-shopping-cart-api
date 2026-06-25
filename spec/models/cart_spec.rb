@@ -42,6 +42,9 @@ RSpec.describe Cart, type: :model do
       subject
       expect(cart.reload.total_price).to eq(40.0)
     end
+
+    include_examples 'updates last_interaction_at'
+    include_examples 'sets abandoned_at to nil'
   end
 
   describe '#add_or_update_item' do
@@ -50,10 +53,14 @@ RSpec.describe Cart, type: :model do
 
     subject { cart.add_or_update_item(product:, quantity: 2) }
 
+    # TODO add specs for update total price
     context 'when product is not in the cart' do
       it 'adds the product to the cart' do
         expect { subject }.to change { cart.cart_items.count }.by(1)
       end
+
+      include_examples 'updates last_interaction_at'
+      include_examples 'sets abandoned_at to nil'
     end
 
     context 'when product is already in the cart' do
@@ -67,6 +74,9 @@ RSpec.describe Cart, type: :model do
       it 'does not create new cart_item' do
         expect { subject }.not_to change { cart.cart_items.count }
       end
+
+      include_examples 'updates last_interaction_at'
+      include_examples 'sets abandoned_at to nil'
     end
   end
 
@@ -86,8 +96,12 @@ RSpec.describe Cart, type: :model do
       it 'updates total price' do 
         expect { subject }.to change { cart.total_price }.by(-20)
       end
+
+      include_examples 'updates last_interaction_at'
+      include_examples 'sets abandoned_at to nil'
     end
 
+    # TODO add specs for total_price
     context 'when product is not in the cart' do
       let(:unrelated_product) { create(:product) }
 
