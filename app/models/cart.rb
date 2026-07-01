@@ -3,7 +3,23 @@ class Cart < ApplicationRecord
 
   has_many :cart_items, dependent: :destroy
   has_many :products, through: :cart_items
-  # TODO: lógica para marcar o carrinho como abandonado e remover se abandonado
+
+  ABANDONMENT_THRESHOLD = 3.hours
+  DELETION_THRESHOLD = 7.days
+
+  scope :pending_abandonment, -> {
+    where(abandoned_at: nil)
+      .where(last_interaction_at: ..ABANDONMENT_THRESHOLD.ago) }
+
+  scope :pending_deletion, -> { where(abandoned_at: ..DELETION_THRESHOLD.ago) }
+  
+  def self.abandon_pending_carts
+    pending_abandonment.in_batches.update_all('abandoned_at = last_interaction_at')
+  end
+
+  def self.remove_pending_deletion_carts
+    pending_deletion.find_each(&:destroy)
+  end
 
   def add_or_update_item(product:, quantity:)
     item = cart_items.find_by(product:)
@@ -15,7 +31,7 @@ class Cart < ApplicationRecord
   def add_product_to_cart(product:, quantity:)
     ActiveRecord::Base.transaction do
       cart_items.create!(product:, quantity:)
-      update_total_price(product:, qty_delta: quantity)
+      update_cart_state(product:, qty_delta: quantity)
     end
   end
 
@@ -24,7 +40,7 @@ class Cart < ApplicationRecord
     item = cart_items.includes(:product).find_by!(product_id:)
 
     ActiveRecord::Base.transaction do
-      update_total_price(
+      update_cart_state(
         product: item.product,
         qty_delta: -item.quantity
       )
@@ -37,11 +53,14 @@ class Cart < ApplicationRecord
   def update_item_quantity(product:, qty_delta:, item:)
     ActiveRecord::Base.transaction do
       item.increment!(:quantity, qty_delta)
-      update_total_price(product:, qty_delta:)
+      update_cart_state(product:, qty_delta:)
     end
   end
 
-  def update_total_price(product:, qty_delta:)
-    update!(total_price: total_price + product.price * qty_delta)
+  def update_cart_state(product:, qty_delta:)
+    update!(
+      total_price: total_price + product.price * qty_delta,
+      last_interaction_at: Time.current,
+      abandoned_at: nil)
   end
 end

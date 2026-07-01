@@ -6,6 +6,7 @@
 
 - `GET /cart` cria e retorna um carrinho vazio quando não existe um carrinho ativo na sessão.
 - `POST /cart/add_item` e `DELETE /cart/:product_id` retornam erro (`404 Not Found`, mensagem `"Cart not found"`) quando não é encontrado um carrinho ativo na sessão.
+- Carrinhos abandonados são marcados e removidos por dois jobs agendados separadamente (`AbandonCartsJob` e `RemovePendingCartsJob`), cada um com uma responsabilidade única.
 
 ## Nossas expectativas
 
