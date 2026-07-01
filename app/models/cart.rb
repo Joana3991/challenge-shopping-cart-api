@@ -3,7 +3,23 @@ class Cart < ApplicationRecord
 
   has_many :cart_items, dependent: :destroy
   has_many :products, through: :cart_items
-  # TODO: lógica para marcar o carrinho como abandonado e remover se abandonado
+
+  ABANDONMENT_THRESHOLD = 3.hours
+  DELETION_THRESHOLD = 7.days
+
+  scope :pending_abandonment, -> {
+    where(abandoned_at: nil)
+      .where(last_interaction_at: ..ABANDONMENT_THRESHOLD.ago) }
+
+  scope :pending_deletion, -> { where(abandoned_at: ..DELETION_THRESHOLD.ago) }
+  
+  def self.abandon_pending_carts
+    pending_abandonment.in_batches.update_all('abandoned_at = last_interaction_at')
+  end
+
+  def self.remove_pending_deletion_carts
+    pending_deletion.find_each(&:destroy)
+  end
 
   def add_or_update_item(product:, quantity:)
     item = cart_items.find_by(product:)
