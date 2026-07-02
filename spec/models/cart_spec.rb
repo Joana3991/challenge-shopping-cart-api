@@ -102,12 +102,12 @@ RSpec.describe Cart, type: :model do
 
     subject { cart.add_or_update_item(product:, quantity: 2) }
 
-    # TODO add specs for update total price
     context 'when product is not in the cart' do
       it 'adds the product to the cart' do
         expect { subject }.to change { cart.cart_items.count }.by(1)
       end
 
+      include_examples 'updates the cart total_price', quantity_delta: 2
       include_examples 'updates last_interaction_at'
       include_examples 'sets abandoned_at to nil'
     end
@@ -124,6 +124,7 @@ RSpec.describe Cart, type: :model do
         expect { subject }.not_to change { cart.cart_items.count }
       end
 
+      include_examples 'updates the cart total_price', quantity_delta: 2
       include_examples 'updates last_interaction_at'
       include_examples 'sets abandoned_at to nil'
     end
@@ -142,15 +143,11 @@ RSpec.describe Cart, type: :model do
         expect(cart.products).not_to include(product)
       end
       
-      it 'updates total price' do 
-        expect { subject }.to change { cart.total_price }.by(-20)
-      end
-
+      include_examples 'updates the cart total_price', quantity_delta: -2
       include_examples 'updates last_interaction_at'
       include_examples 'sets abandoned_at to nil'
     end
 
-    # TODO add specs for total_price
     context 'when product is not in the cart' do
       let(:unrelated_product) { create(:product) }
 
