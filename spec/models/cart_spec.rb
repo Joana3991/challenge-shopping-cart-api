@@ -91,11 +91,7 @@ RSpec.describe Cart, type: :model do
       expect(CartItem.last.product).to eq(product)  
     end
 
-    it 'updates the cart total_price' do
-      subject
-      expect(cart.reload.total_price).to eq(40.0)
-    end
-
+    include_examples 'updates the cart total_price', quantity_delta: 2
     include_examples 'updates last_interaction_at'
     include_examples 'sets abandoned_at to nil'
   end
