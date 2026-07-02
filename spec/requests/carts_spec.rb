@@ -93,7 +93,10 @@ RSpec.describe "/carts", type: :request do
         expect { subject }.to change { cart_item.reload.quantity }.by(3)
       end
 
-      # TODO add test to ensure cart_item is not being created
+      it 'does not creat new cart_item' do
+        expect { subject }.not_to change { CartItem.count }
+      end
+
       include_examples 'updates cart total_price', 3
       include_examples 'returns cart with products'
       include_examples 'returns status 200'
